@@ -1,5 +1,5 @@
 # from mcmc import *
-from generic_mbg import invlogit, fast_inplace_mul, fast_inplace_square, fast_inplace_scalar_add
+from generic_mbg import stukel_invlogit, fast_inplace_mul, fast_inplace_square, fast_inplace_scalar_add
 import pymc as pm
 from cut_geographic import cut_geographic, hemisphere
 import ibdw
@@ -26,25 +26,25 @@ def check_data(input):
     if np.any(input.pos<0) or np.any(input.neg<0):
         raise ValueError, 'Some negative values in pos and neg'
         
-def allele(sp_sub):
+def allele(sp_sub, a):
     allele = sp_sub.copy('F')
-    allele = invlogit(allele)
+    allele = stukel_invlogit(allele, *a)
     return allele
 
-def hw_homo(sp_sub):
-    hom = allele(sp_sub)
+def hw_homo(sp_sub, a):
+    hom = allele(sp_sub, a)
     fast_inplace_mul(hom,hom)
     return hom
     
-def hw_hetero(sp_sub):
-    p = allele(sp_sub)
+def hw_hetero(sp_sub, a):
+    p = allele(sp_sub, a)
     q = fast_inplace_scalar_add(-p,1)
     fast_inplace_mul(p,q)
     return 2*p
     
-def hw_any(sp_sub):
-    homo = hw_homo(sp_sub)
-    hetero = hw_hetero(sp_sub)
+def hw_any(sp_sub, a):
+    homo = hw_homo(sp_sub, a)
+    hetero = hw_hetero(sp_sub, a)
     return hetero+homo
 
 # map_postproc = [allele, hw_hetero, hw_homo, hw_any]
@@ -54,21 +54,13 @@ map_postproc = [allele, hw_homo, hw_hetero, hw_any]
 def validate_allele(data):
     obs = data.pos
     n = data.pos + data.neg
-    def f(sp_sub, n=n):
-        return pm.rbinomial(n=n,p=pm.invlogit(sp_sub))
+    def f(sp_sub, a, n=n):
+        return pm.rbinomial(n=n,p=pm.stukel_invlogit(sp_sub, *a))
     return obs, n, f
 
 validate_postproc = [validate_allele]
 
 regionlist=['Free','Epidemic','Hypoendemic','Mesoendemic','Hyperendemic','Holoendemic']
-
-def joint_areal_means(gc, regionlist=regionlist): 
-
-    def h(**kwds):
-        return np.array([kwds[r] for r in regionlist])
-
-    g = dict([(k, lambda sp_sub, x, a=v['geom'].area: invlogit(sp_sub(x))) for k,v in gc.iteritems()])
-    return h, g
     
 def area_allele(gc):
     if len(gc)>1:
@@ -77,8 +69,8 @@ def area_allele(gc):
     def h(**region):
         return np.array(region.values()[0])
 
-    def f(sp_sub, x):
-        p = pm.invlogit(sp_sub(x))
+    def f(sp_sub, a, x):
+        p = pm.stukel_invlogit(sp_sub(x), *a)
         return p
 
     g = {gc.keys()[0]: f}
@@ -92,8 +84,8 @@ def area_hw_hetero(gc):
     def h(**region):
         return np.array(region.values()[0])
 
-    def f(sp_sub, x):
-        p = pm.invlogit(sp_sub(x))
+    def f(sp_sub, a, x):
+        p = pm.stukel_invlogit(sp_sub(x), *a)
         return 2*p*(1-p)
 
     g = {gc.keys()[0]: f}
@@ -107,8 +99,8 @@ def area_hw_homo(gc):
     def h(**region):
         return np.array(region.values()[0])
 
-    def f(sp_sub, x):
-        p = pm.invlogit(sp_sub(x))
+    def f(sp_sub, a, x):
+        p = pm.stukel_invlogit(sp_sub(x), *a)
         return p**2
 
     g = {gc.keys()[0]: f}
@@ -122,8 +114,8 @@ def area_hw_any(gc):
     def h(**region):
         return np.array(region.values()[0])
 
-    def f(sp_sub, x):
-        p = pm.invlogit(sp_sub(x))
+    def f(sp_sub, a, x):
+        p = pm.stukel_invlogit(sp_sub(x), *a)
         return 2*p*(1-p)+p**2
 
     g = {gc.keys()[0]: f}
@@ -133,7 +125,7 @@ def area_hw_any(gc):
 areal_postproc = [area_allele, area_hw_homo, area_hw_hetero, area_hw_any]
 
 def mcmc_init(M):
-    M.use_step_method(pm.gp.GPParentAdaptiveMetropolis, [M.amp, M.amp_short_frac, M.scale_short, M.scale_long, M.diff_degree])
+    M.use_step_method(pm.gp.GPParentAdaptiveMetropolis, [M.amp, M.amp_short_frac, M.scale_short, M.scale_long, M.diff_degree, M.a])
     M.use_step_method(pm.gp.GPEvaluationGibbs, M.sp_sub, M.V, M.eps_p_f)
                     
 metadata_keys = ['fi','ti','ui']

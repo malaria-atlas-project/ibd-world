@@ -121,6 +121,8 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
                 else:
                     return 0
 
+            a = pm.Uninformative('a',value=[0,0])
+
             m = pm.Uninformative('m',value=-25)
             @pm.deterministic(trace=False)
             def M(m=m):
@@ -128,8 +130,8 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
             
             if constrained:
                 @pm.potential
-                def pripred_check(m=m,amp=amp,V=V,normrands=np.random.normal(size=1000)):
-                    sum_above = np.sum(pm.flib.invlogit(normrands*np.sqrt(amp**2+V)+m)>threshold_val)
+                def pripred_check(m=m,amp=amp,V=V,a=a,normrands=np.random.normal(size=1000)):
+                    sum_above = np.sum(pm.flib.stukel_invlogit(normrands*np.sqrt(amp**2+V)+m, *a)>threshold_val)
                     if float(sum_above) / len(normrands) <= max_p_above:
                         return 0.
                     else:
@@ -168,7 +170,7 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
             eps_p_f_d.append(pm.Normal('eps_p_f_%i'%i, sp_sub.f_eval[fi[sl]], 1./V, value=pm.logit(s_hat[sl]), trace=False))            
 
             # The allele frequency
-            s_d.append(pm.Lambda('s_%i'%i,lambda lt=eps_p_f_d[-1]: invlogit(lt),trace=False))
+            s_d.append(pm.Lambda('s_%i'%i,lambda lt=eps_p_f_d[-1], a=a: pm.flib.stukel_invlogit(lt, *a),trace=False))
 
             # The observed allele frequencies
             data_d.append(pm.Binomial('data_%i'%i, pos[sl]+neg[sl], s_d[-1], value=pos[sl], observed=True))
