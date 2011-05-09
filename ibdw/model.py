@@ -11,6 +11,8 @@ from map_utils import *
 from generic_mbg import *
 import generic_mbg
 from ibdw import cut_matern, cut_gaussian
+import scipy
+from scipy import stats
 
 __all__ = ['make_model','nested_covariance_fn']
 
@@ -71,8 +73,6 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
     data_mesh, logp_mesh, fi, ui, ti = uniquify(lon,lat)
     
     s_hat = (pos+1.)/(pos+neg+2.)
-
-    normrands = np.random.normal(size=1000)
         
     init_OK = False
     while not init_OK:
@@ -129,8 +129,8 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
             if constrained:
                 @pm.potential
                 def pripred_check(m=m,amp=amp,V=V,normrands=np.random.normal(size=1000)):
-                    sum_above = np.sum(pm.flib.invlogit(normrands*np.sqrt(amp**2+V)+m)>threshold_val)
-                    if float(sum_above) / len(normrands) <= max_p_above:
+                    p_above = scipy.stats.distributions.norm.cdf(m-pm.logit(threshold_val), 0, amp**2+V)
+                    if p_above <= max_p_above:
                         return 0.
                     else:
                         return -np.inf
