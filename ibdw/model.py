@@ -121,7 +121,7 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
                 else:
                     return 0
 
-            a = pm.Uninformative('a',value=[0,0])
+            a = pm.Normal('a',0,.1,value=[0,0])
 
             m = pm.Uninformative('m',value=-25)
             @pm.deterministic(trace=False)
