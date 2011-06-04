@@ -121,9 +121,9 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
                 else:
                     return 0
 
-            a0 = pm.Normal('a0',0,.1,value=0)
+            a0 = pm.Normal('a0',0,.1,value=0,observed=True)
             # a1 limits mixing.
-            a1 = pm.Normal('a1',0,.,1,value=.06,observed=True)
+            a1 = pm.Normal('a1',0,.1,value=.06,observed=True)
             a = pm.Lambda('a',lambda a0=a0,a1=a1: [a0,a1])
 
             m = pm.Uninformative('m',value=-8.3)
