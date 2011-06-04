@@ -78,15 +78,15 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
     while not init_OK:
         try:
             # The fraction of the partial sill going to 'short' variation.
-            amp_short_frac = pm.Uniform('amp_short_frac',0,1)
+            amp_short_frac = pm.Uniform('amp_short_frac',0,.19)
 
             # The partial sill.
-            amp = pm.Exponential('amp', .1, value=1.)
+            amp = pm.Exponential('amp', .1, value=1.4)
 
             # The range parameters. Units are RADIANS. 
             # 1 radian = the radius of the earth, about 6378.1 km
-            scale_short = pm.Exponential('scale_short', .1, value=.08)
-            scale_long = pm.Exponential('scale_long', .1, value=.9)
+            scale_short = pm.Exponential('scale_short', .1, value=.07)
+            scale_long = pm.Exponential('scale_long', .1, value=.99)
 
             @pm.potential
             def scale_constraint(s=scale_long):
@@ -110,10 +110,10 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
             scale_long_in_km = scale_long*6378.1
 
             # This parameter controls the degree of differentiability of the field.
-            diff_degree = pm.Uniform('diff_degree', .01, 3)
+            diff_degree = pm.Uniform('diff_degree', .01, 2.62)
 
             # The nugget variance.
-            V = pm.Exponential('V', .1, value=.2)
+            V = pm.Exponential('V', .1, value=2.22)
             @pm.potential
             def V_constraint(V=V):
                 if V<.1:
@@ -121,9 +121,12 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
                 else:
                     return 0
 
-            a = pm.Normal('a',0,.1,value=[0,0])
+            a0 = pm.Normal('a0',0,.1,value=0)
+            # a1 limits mixing.
+            a1 = pm.Normal('a1',0,.,1,value=.06,observed=True)
+            a = pm.Lambda('a',lambda a0=a0,a1=a1: [a0,a1])
 
-            m = pm.Uninformative('m',value=-25)
+            m = pm.Uninformative('m',value=-8.3)
             @pm.deterministic(trace=False)
             def M(m=m):
                 return pm.gp.Mean(mean_fn, m=m)
