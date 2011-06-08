@@ -37,7 +37,7 @@ __all__ = ['make_model','nested_covariance_fn']
 # lat = np.array([latfun(tau)*180./np.pi for tau in t])    
 # lon = np.array([lonfun(tau)*180./np.pi for tau in t])
 
-constrained = True
+constrained = False
 threshold_val = 0.01
 max_p_above = 0.00001
 
