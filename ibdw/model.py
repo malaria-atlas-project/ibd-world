@@ -75,7 +75,7 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
     s_hat = (pos+1.)/(pos+neg+2.)
         
     # The fraction of the partial sill going to 'short' variation.
-    amp_short_frac = pm.Uniform('amp_short_frac',0,.19)
+    amp_short_frac = pm.Uniform('amp_short_frac',0,1)
 
     # The partial sill.
     amp = pm.Exponential('amp', .1, value=1.4)
@@ -107,10 +107,10 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
     scale_long_in_km = scale_long*6378.1
 
     # This parameter controls the degree of differentiability of the field.
-    diff_degree = pm.Uniform('diff_degree', .01, 2.62)
+    diff_degree = pm.Uniform('diff_degree', .01, 3)
 
     # The nugget variance.
-    V = pm.Exponential('V', .1, value=2.22)
+    V = pm.Exponential('V', .1, value=1)
     # @pm.potential
     # def V_constraint(V=V):
     #     if V<.1:
