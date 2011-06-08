@@ -74,90 +74,81 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
     
     s_hat = (pos+1.)/(pos+neg+2.)
         
-    init_OK = False
-    while not init_OK:
-        try:
-            # The fraction of the partial sill going to 'short' variation.
-            amp_short_frac = pm.Uniform('amp_short_frac',0,.19)
+    # The fraction of the partial sill going to 'short' variation.
+    amp_short_frac = pm.Uniform('amp_short_frac',0,.19)
 
-            # The partial sill.
-            amp = pm.Exponential('amp', .1, value=1.4)
+    # The partial sill.
+    amp = pm.Exponential('amp', .1, value=1.4)
 
-            # The range parameters. Units are RADIANS. 
-            # 1 radian = the radius of the earth, about 6378.1 km
-            scale_short = pm.Exponential('scale_short', .1, value=.07)
-            scale_long = pm.Exponential('scale_long', .1, value=.99)
+    # The range parameters. Units are RADIANS. 
+    # 1 radian = the radius of the earth, about 6378.1 km
+    scale_short = pm.Exponential('scale_short', .1, value=.07)
+    scale_long = pm.Exponential('scale_long', .1, value=.99)
 
-            @pm.potential
-            def scale_constraint(s=scale_long):
-                if s>1:
-                    return -np.inf
-                else:
-                    return 0
+    @pm.potential
+    def scale_constraint(s=scale_long):
+        if s>1:
+            return -np.inf
+        else:
+            return 0
 
-            @pm.potential
-            def scale_watcher(short=scale_short,long=scale_long):
-                """A constraint: the 'long' scale must be bigger than the 'short' scale."""
-                if long>short:
-                    return 0
-                else:
-                    return -np.Inf
+    @pm.potential
+    def scale_watcher(short=scale_short,long=scale_long):
+        """A constraint: the 'long' scale must be bigger than the 'short' scale."""
+        if long>short:
+            return 0
+        else:
+            return -np.Inf
+    
+
+    # scale_shift = pm.Exponential('scale_shift', .1, value=.08)
+    # scale = pm.Lambda('scale',lambda s=scale_shift: s+.01)
+    scale_short_in_km = scale_short*6378.1
+    scale_long_in_km = scale_long*6378.1
+
+    # This parameter controls the degree of differentiability of the field.
+    diff_degree = pm.Uniform('diff_degree', .01, 2.62)
+
+    # The nugget variance.
+    V = pm.Exponential('V', .1, value=2.22)
+    @pm.potential
+    def V_constraint(V=V):
+        if V<.1:
+            return -np.inf
+        else:
+            return 0
+
+    a0 = pm.Normal('a0',0,.1,value=0,observed=True)
+    # a1 limits mixing.
+    a1 = pm.Normal('a1',0,.1,value=.1,observed=True)
+    a = pm.Lambda('a',lambda a0=a0,a1=a1: [a0,a1])
+
+    m = pm.Uninformative('m',value=-13)
+    @pm.deterministic(trace=False)
+    def M(m=m):
+        return pm.gp.Mean(mean_fn, m=m)
+    
+    if constrained:
+        @pm.potential
+        def pripred_check(m=m,amp=amp,V=V,a=a):
+            p_above = scipy.stats.distributions.norm.cdf(m-pm.stukel_logit(threshold_val,*a), 0, np.sqrt(amp**2+V))
+            if p_above <= max_p_above:
+                return 0.
+            else:
+                return -np.inf
+
+    # Create the covariance & its evaluation at the data locations.
+    facdict = dict([(k,1.e6) for k in covariate_keys])
+    facdict['m'] = 0
+    @pm.deterministic(trace=False)
+    def C(amp=amp, amp_short_frac=amp_short_frac, scale_short=scale_short, scale_long=scale_long, diff_degree=diff_degree, ck=covariate_keys, id=input_data, ui=ui, facdict=facdict):
+        """A covariance function created from the current parameter values."""
+        eval_fn = CovarianceWithCovariates(nested_covariance_fn, id, ck, ui, fac=facdict)
+        return pm.gp.FullRankCovariance(eval_fn, amp=amp, amp_short_frac=amp_short_frac, scale_short=scale_short, 
+                    scale_long=scale_long, diff_degree=diff_degree)
+
+    sp_sub = pm.gp.GPSubmodel('sp_sub', M, C, logp_mesh, tally_f=False)
             
-
-            # scale_shift = pm.Exponential('scale_shift', .1, value=.08)
-            # scale = pm.Lambda('scale',lambda s=scale_shift: s+.01)
-            scale_short_in_km = scale_short*6378.1
-            scale_long_in_km = scale_long*6378.1
-
-            # This parameter controls the degree of differentiability of the field.
-            diff_degree = pm.Uniform('diff_degree', .01, 2.62)
-
-            # The nugget variance.
-            V = pm.Exponential('V', .1, value=2.22)
-            @pm.potential
-            def V_constraint(V=V):
-                if V<.1:
-                    return -np.inf
-                else:
-                    return 0
-
-            a0 = pm.Normal('a0',0,.1,value=0,observed=True)
-            # a1 limits mixing.
-            a1 = pm.Normal('a1',0,.1,value=.1,observed=True)
-            a = pm.Lambda('a',lambda a0=a0,a1=a1: [a0,a1])
-
-            m = pm.Uninformative('m',value=-8.3)
-            @pm.deterministic(trace=False)
-            def M(m=m):
-                return pm.gp.Mean(mean_fn, m=m)
-            
-            if constrained:
-                @pm.potential
-                def pripred_check(m=m,amp=amp,V=V,a=a):
-                    p_above = scipy.stats.distributions.norm.cdf(m-pm.stukel_logit(threshold_val,*a), 0, np.sqrt(amp**2+V))
-                    if p_above <= max_p_above:
-                        return 0.
-                    else:
-                        return -np.inf
-
-            # Create the covariance & its evaluation at the data locations.
-            facdict = dict([(k,1.e6) for k in covariate_keys])
-            facdict['m'] = 0
-            @pm.deterministic(trace=False)
-            def C(amp=amp, amp_short_frac=amp_short_frac, scale_short=scale_short, scale_long=scale_long, diff_degree=diff_degree, ck=covariate_keys, id=input_data, ui=ui, facdict=facdict):
-                """A covariance function created from the current parameter values."""
-                eval_fn = CovarianceWithCovariates(nested_covariance_fn, id, ck, ui, fac=facdict)
-                return pm.gp.FullRankCovariance(eval_fn, amp=amp, amp_short_frac=amp_short_frac, scale_short=scale_short, 
-                            scale_long=scale_long, diff_degree=diff_degree)
-
-            sp_sub = pm.gp.GPSubmodel('sp_sub', M, C, logp_mesh, tally_f=False)
-                
-            init_OK = True
-        except pm.ZeroProbability:
-            init_OK = False
-            cls,inst,tb = sys.exc_info()
-            print 'Restarting, message %s\n'%inst.message
-
     # Make f start somewhere a bit sane
     sp_sub.f_eval.value = sp_sub.f_eval.value - np.mean(sp_sub.f_eval.value)
 
