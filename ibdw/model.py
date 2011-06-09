@@ -14,7 +14,7 @@ from ibdw import cut_matern, cut_gaussian
 import scipy
 from scipy import stats
 
-__all__ = ['make_model','nested_covariance_fn']
+__all__ = ['make_model']
 
 # The parameterization of the cut between western and eastern hemispheres.
 #
@@ -143,8 +143,8 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
     @pm.deterministic(trace=False)
     def C(amp=amp, scale=scale_short, diff_degree=diff_degree, ck=covariate_keys, id=input_data, ui=ui, facdict=facdict):
         """A covariance function created from the current parameter values."""
-        eval_fn = CovarianceWithCovariates(nested_covariance_fn, id, ck, ui, fac=facdict)
-        return pm.gp.FullRankCovariance(pm.gp.matern.geo_rad, amp=amp, scale=scale, diff_degree=diff_degree)
+        eval_fn = CovarianceWithCovariates(pm.gp.matern.geo_rad, id, ck, ui, fac=facdict)
+        return pm.gp.FullRankCovariance(eval_fn, amp=amp, scale=scale, diff_degree=diff_degree)
 
     sp_sub = pm.gp.GPSubmodel('sp_sub', M, C, logp_mesh, tally_f=False)
             
