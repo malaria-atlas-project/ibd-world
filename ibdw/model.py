@@ -41,14 +41,14 @@ constrained = True
 threshold_val = 0.01
 max_p_above = 0.00001
 
-# def nested_covariance_fn(x,y, amp, amp_short_frac, scale_short, scale_long, diff_degree, symm=False):
+# def nested_covariance_fn(x,y, amp, amp_short_frac, scale, scale_long, diff_degree, symm=False):
 #     """
 #     A nested covariance funcion with a smooth, anisotropic long-scale part
 #     and a rough, isotropic short-scale part.
 #     """
 #     amp_short = amp*np.sqrt(amp_short_frac)
 #     amp_long = amp*np.sqrt(1-amp_short_frac)
-#     out = cut_matern(x,y,amp=amp_short,scale=scale_short,symm=symm,diff_degree=diff_degree)
+#     out = cut_matern(x,y,amp=amp_short,scale=scale,symm=symm,diff_degree=diff_degree)
 #     long_part = cut_gaussian(x,y,amp=amp_long,scale=scale_long,symm=symm)
 #     out += long_part
 #     return out
@@ -82,18 +82,18 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
 
     # The range parameters. Units are RADIANS. 
     # 1 radian = the radius of the earth, about 6378.1 km
-    scale_short = pm.Exponential('scale_short', .1, value=.07)
+    scale = pm.Exponential('scale', .1, value=.07)
     # scale_long = pm.Exponential('scale_long', .1, value=.99)
 
-    # @pm.potential
-    # def scale_constraint(s=scale_long):
-    #     if s>1:
-    #         return -np.inf
-    #     else:
-    #         return 0
+    @pm.potential
+    def scale_constraint(s=scale):
+        if s>1:
+            return -np.inf
+        else:
+            return 0
 
     # @pm.potential
-    # def scale_watcher(short=scale_short,long=scale_long):
+    # def scale_watcher(short=scale,long=scale_long):
     #     """A constraint: the 'long' scale must be bigger than the 'short' scale."""
     #     if long>short:
     #         return 0
@@ -103,7 +103,7 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
 
     # scale_shift = pm.Exponential('scale_shift', .1, value=.08)
     # scale = pm.Lambda('scale',lambda s=scale_shift: s+.01)
-    scale_short_in_km = scale_short*6378.1
+    scale_in_km = scale*6378.1
     # scale_long_in_km = scale_long*6378.1
 
     # This parameter controls the degree of differentiability of the field.
@@ -141,7 +141,7 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
     facdict = dict([(k,1.e6) for k in covariate_keys])
     facdict['m'] = 0
     @pm.deterministic(trace=False)
-    def C(amp=amp, scale=scale_short, diff_degree=diff_degree, ck=covariate_keys, id=input_data, ui=ui, facdict=facdict):
+    def C(amp=amp, scale=scale, diff_degree=diff_degree, ck=covariate_keys, id=input_data, ui=ui, facdict=facdict):
         """A covariance function created from the current parameter values."""
         eval_fn = CovarianceWithCovariates(pm.gp.matern.geo_rad, id, ck, ui, fac=facdict)
         return pm.gp.FullRankCovariance(eval_fn, amp=amp, scale=scale, diff_degree=diff_degree)
