@@ -133,7 +133,9 @@ def area_hw_any(gc):
 areal_postproc = [area_allele, area_hw_homo, area_hw_hetero, area_hw_any]
 
 def mcmc_init(M):
-    M.use_step_method(pm.gp.GPParentAdaptiveMetropolis, [M.amp, M.amp_short_frac, M.scale_short, M.scale_long, M.diff_degree])
+    scalar_vars = [M.amp, M.amp_short_frac, M.scale_short, M.scale_long, M.diff_degree, M.m]
+    scales = dict([(k,.0001) for k in scalar_vars])
+    M.use_step_method(pm.gp.GPParentAdaptiveMetropolis, scalar_vars, scales=scales)
     M.use_step_method(pm.gp.GPEvaluationGibbs, M.sp_sub, M.V, M.eps_p_f_d)
                     
 metadata_keys = ['fi','ti','ui']
