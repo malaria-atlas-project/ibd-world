@@ -85,12 +85,12 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
     scale_short = pm.Exponential('scale_short', .1, value=.07)
     scale_long = pm.Exponential('scale_long', .1, value=.99)
 
-    # @pm.potential
-    # def scale_constraint(s=scale_long):
-    #     if s>1:
-    #         return -np.inf
-    #     else:
-    #         return 0
+    @pm.potential
+    def scale_constraint(s=scale_long):
+        if s>1:
+            return -np.inf
+        else:
+            return 0
 
     @pm.potential
     def scale_watcher(short=scale_short,long=scale_long):
