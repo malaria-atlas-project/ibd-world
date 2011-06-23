@@ -11,8 +11,8 @@ pm.gp.cov_funs.cov_utils.mod_search_path.append(root)
 import cg
 from cg import *
 
-cut_matern = pm.gp.cov_utils.covariance_wrapper('matern', 'pymc.gp.cov_funs.isotropic_cov_funs', {'diff_degree': 'The degree of differentiability of realizations.'}, 'cut_geographic', 'cg')
-cut_gaussian = pm.gp.cov_utils.covariance_wrapper('gaussian', 'pymc.gp.cov_funs.isotropic_cov_funs', {}, 'cut_geographic', 'cg')
+cut_matern = pm.gp.cov_utils.covariance_wrapper_with_diag('matern', 'pymc.gp.cov_funs.isotropic_cov_funs', {'diff_degree': 'The degree of differentiability of realizations.'}, 'cut_geographic', 'cg')
+cut_gaussian = pm.gp.cov_utils.covariance_wrapper_with_diag('gaussian', 'pymc.gp.cov_funs.isotropic_cov_funs', {}, 'cut_geographic', 'cg')
 
 nugget_labels = {'sp_sub': 'V'}
 obs_labels= {'sp_sub': 'eps_p_f'}
@@ -133,8 +133,10 @@ def area_hw_any(gc):
 areal_postproc = [area_allele, area_hw_homo, area_hw_hetero, area_hw_any]
 
 def mcmc_init(M):
-    M.use_step_method(pm.gp.GPParentAdaptiveMetropolis, [M.amp, M.amp_short_frac, M.scale_short, M.scale_long, M.diff_degree])
-    M.use_step_method(pm.gp.GPEvaluationGibbs, M.sp_sub, M.V, M.eps_p_f)
+    scalar_vars = [M.amp, M.amp_short_frac, M.scale_short, M.scale_long, M.diff_degree, M.m, M.V]
+    scales = dict([(k,.0001) for k in scalar_vars])
+    M.use_step_method(pm.gp.GPParentAdaptiveMetropolis, scalar_vars, scales=scales)
+    M.use_step_method(pm.gp.GPEvaluationGibbs, M.sp_sub, M.V, M.eps_p_f_d)
                     
 metadata_keys = ['fi','ti','ui']
 
