@@ -70,7 +70,7 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
     grainsize = 10
 
     # Unique data locations
-    data_mesh, logp_mesh, fi, ui, ti = uniquify(lon,lat)
+    data_mesh, logp_mesh, fi, ui, ti = uniquify_tol(5./6378.1, 0, lon, lat)
     
     s_hat = (pos+1.)/(pos+neg+2.)
         
