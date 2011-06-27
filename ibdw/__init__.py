@@ -53,7 +53,7 @@ map_postproc = [allele, hw_homo, hw_hetero, hw_any]
 
 def validate_allele(data):
     obs = data.pos
-    n = data.pos + data.neg
+    n = (data.pos + data.neg).astype('int')
     def f(sp_sub, a, n=n):
         return pm.rbinomial(n=n,p=pm.stukel_invlogit(sp_sub, *a))
     return obs, n, f

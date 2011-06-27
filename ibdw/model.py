@@ -75,7 +75,7 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
     s_hat = (pos+1.)/(pos+neg+2.)
         
     # The fraction of the partial sill going to 'short' variation.
-    amp_short_frac = pm.Uniform('amp_short_frac',0,1)
+    amp_short_frac = pm.Uniform('amp_short_frac',0,1,value=0.5,observed=True)
 
     # The partial sill.
     amp = pm.Exponential('amp', .1, value=1.4)
@@ -100,14 +100,13 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
         else:
             return -np.Inf
     
-
     # scale_shift = pm.Exponential('scale_shift', .1, value=.08)
     # scale = pm.Lambda('scale',lambda s=scale_shift: s+.01)
     scale_short_in_km = scale_short*6378.1
     scale_long_in_km = scale_long*6378.1
 
     # This parameter controls the degree of differentiability of the field.
-    diff_degree = pm.Uniform('diff_degree', .01, 3)
+    diff_degree = pm.Uniform('diff_degree', .01, 3, value=0.5, observed=True)
 
     # The nugget variance.
     V = pm.Exponential('V', .1, value=1)
@@ -120,7 +119,7 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
 
     a0 = pm.Normal('a0',0,.1,value=0,observed=True)
     # a1 limits mixing.
-    a1 = pm.Normal('a1',0,.1,value=.1,observed=True)
+    a1 = pm.Normal('a1',0,.1,value=.2,observed=True)
     a = pm.Lambda('a',lambda a0=a0,a1=a1: [a0,a1])
 
     m = pm.Uninformative('m',value=-13)
