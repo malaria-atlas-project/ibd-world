@@ -14,7 +14,7 @@ from ibdw import cut_matern, cut_gaussian
 import scipy
 from scipy import stats
 
-__all__ = ['make_model','nested_covariance_fn']
+__all__ = ['make_model']
 
 # The parameterization of the cut between western and eastern hemispheres.
 #
@@ -63,6 +63,12 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
     # The range parameters. Units are RADIANS. 
     # 1 radian = the radius of the earth, about 6378.1 km
     scale = pm.Exponential('scale', .1, value=.07)
+    @pm.potential
+    def scale_constraint(scale=scale):
+        if scale>1:
+            return -np.inf
+        else:
+            return 0
 
     # This parameter controls the degree of differentiability of the field.
     diff_degree = pm.Uniform('diff_degree', .01, 3, value=0.5)
