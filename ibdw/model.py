@@ -71,7 +71,7 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
     #         return 0
 
     # This parameter controls the degree of differentiability of the field.
-    diff_degree = pm.Uniform('diff_degree', .01, 3, value=0.5)
+    diff_degree = pm.Uniform('diff_degree', .01, 3, value=0.5, observed=True)
 
     # The nugget variance.
     V = pm.Exponential('V', .1, value=1)
@@ -119,6 +119,12 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
     eps_p_f_d = []
     s_d = []
     data_d = []
+    
+    coef_ = pm.Uninformative('coef_', np.zeros(2))
+    @pm.deterministic
+    def coef(coef_=coef_):
+        return np.hstack([1,coef_])
+    
 
     for i in xrange(len(pos)/grainsize+1):
         sl = slice(i*grainsize,(i+1)*grainsize,None)        
@@ -126,9 +132,13 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
             # Nuggeted field in this cluster
             eps_p_f_d.append(pm.Normal('eps_p_f_%i'%i, sp_sub.f_eval[fi[sl]], 1./V, value=pm.logit(s_hat[sl]), trace=False))            
 
-            # The allele frequency
-            s_d.append(pm.Lambda('s_%i'%i,lambda lt=eps_p_f_d[-1], a=a: pm.flib.stukel_invlogit(lt, *a),trace=False))
+            # Tomorrow: Empirically set the link function to the MLE?
 
+            # The allele frequency
+            s_d.append(pm.Lambda('s_%i'%i,lambda lt=eps_p_f_d[-1], a=a, coef=coef: 
+            pm.flib.stukel_invlogit(np.sum([c_*lt**(power+1) for (power, c_) in enumerate(coef)], axis=0), *a),
+            trace=False))
+            
             # The observed allele frequencies
             data_d.append(pm.Binomial('data_%i'%i, pos[sl]+neg[sl], s_d[-1], value=pos[sl], observed=True))
     
