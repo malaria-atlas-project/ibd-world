@@ -26,25 +26,27 @@ def check_data(input):
     if np.any(input.pos<0) or np.any(input.neg<0):
         raise ValueError, 'Some negative values in pos and neg'
         
-def allele(sp_sub, a):
-    allele = sp_sub.copy('F')
+def allele(sp_sub, a, coef):
+    allele = sp_sub*0
+    for power, c_ in enumerate(coef):
+        allele += c_ * sp_sub**power
     allele = stukel_invlogit(allele, *a)
     return allele
 
-def hw_homo(sp_sub, a):
-    hom = allele(sp_sub, a)
+def hw_homo(sp_sub, a, coef):
+    hom = allele(sp_sub, a, coef)
     fast_inplace_mul(hom,hom)
     return hom
     
-def hw_hetero(sp_sub, a):
-    p = allele(sp_sub, a)
+def hw_hetero(sp_sub, a, coef):
+    p = allele(sp_sub, a, coef)
     q = fast_inplace_scalar_add(-p,1)
     fast_inplace_mul(p,q)
     return 2*p
     
-def hw_any(sp_sub, a):
-    homo = hw_homo(sp_sub, a)
-    hetero = hw_hetero(sp_sub, a)
+def hw_any(sp_sub, a, coef):
+    homo = hw_homo(sp_sub, a, coef)
+    hetero = hw_hetero(sp_sub, a, coef)
     return hetero+homo
 
 # map_postproc = [allele, hw_hetero, hw_homo, hw_any]
@@ -54,8 +56,9 @@ map_postproc = [allele, hw_homo, hw_hetero, hw_any]
 def validate_allele(data):
     obs = data.pos
     n = (data.pos + data.neg).astype('int')
-    def f(sp_sub, a, n=n):
-        return pm.rbinomial(n=n,p=pm.stukel_invlogit(sp_sub, *a))
+    def f(sp_sub, linkfn, a, coef, n=n):
+        p = linkfn(sp_sub, a, coef)
+        return pm.rbinomial(n=n,p=p)
     return obs, n, f
 
 validate_postproc = [validate_allele]
@@ -84,8 +87,8 @@ def area_hw_hetero(gc):
     def h(**region):
         return np.array(region.values()[0])
 
-    def f(sp_sub, a, x):
-        p = pm.stukel_invlogit(sp_sub(x), *a)
+    def f(sp_sub, linkfn, a, coef, x):
+        p = linkfn(sp_sub(x), a, coef)
         return 2*p*(1-p)
 
     g = {gc.keys()[0]: f}
@@ -99,8 +102,8 @@ def area_hw_homo(gc):
     def h(**region):
         return np.array(region.values()[0])
 
-    def f(sp_sub, a, x):
-        p = pm.stukel_invlogit(sp_sub(x), *a)
+    def f(sp_sub, linkfn, a, coef, x):
+        p = linkfn(sp_sub(x), a, coef)
         return p**2
 
     g = {gc.keys()[0]: f}
@@ -114,8 +117,8 @@ def area_hw_any(gc):
     def h(**region):
         return np.array(region.values()[0])
 
-    def f(sp_sub, a, x):
-        p = pm.stukel_invlogit(sp_sub(x), *a)
+    def f(sp_sub, linkfn, a, coef, x):
+        p = linkfn(sp_sub(x), a, coef)
         return 2*p*(1-p)+p**2
 
     g = {gc.keys()[0]: f}
@@ -125,10 +128,13 @@ def area_hw_any(gc):
 areal_postproc = [area_allele, area_hw_homo, area_hw_hetero, area_hw_any]
 
 def mcmc_init(M):
-    scalar_vars = [M.amp, M.scale, M.m, M.V, M.coef_]
+    scalar_vars = [M.amp, M.scale, M.m, M.V]
     scales = dict([(k,.0001*np.ones(np.shape(k.value))) for k in scalar_vars])
     M.use_step_method(pm.gp.GPParentAdaptiveMetropolis, scalar_vars, scales=scales, delay=20000)
     M.use_step_method(pm.gp.GPEvaluationGibbs, M.sp_sub, M.V, M.eps_p_f_d)
+    
+    
+    
                     
 metadata_keys = ['fi','ti','ui']
 

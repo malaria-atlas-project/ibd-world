@@ -82,6 +82,26 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
     #     else:
     #         return 0
 
+    coef = np.array([-1.48556762,  0.28125179,  0.02261485,  0.02125477])
+
+    def poly(x,coef=coef):
+        return np.sum([c_*x**(power) for (power, c_) in enumerate(coef)], axis=0)
+
+    def linkfn(x, a=[0,0], coef=coef):
+        return pm.flib.stukel_invlogit(poly(x,coef), *a)
+
+    def inverse_poly(y, coef=coef):
+        poly = coef[::-1] + np.array([0,0,0,-y])
+        roots = filter(lambda x: not x.imag, np.roots(poly))
+        return np.array(roots).real
+
+    def inverse_linkfn(y, a=[0,0], coef=coef, range=range):
+        all_sol = inverse_poly(pm.flib.stukel_logit(y, *a), coef)
+        # return all_sol[np.argmin(np.abs(all_sol))]
+        if len(all_sol)>1:
+            raise RuntimeError
+        return all_sol[0]
+
     a0 = pm.Normal('a0',0,.1,value=0,observed=True)
     # a1 limits mixing.
     a1 = pm.Normal('a1',0,.1,value=0,observed=True)
@@ -95,7 +115,7 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
     if constrained:
         @pm.potential
         def pripred_check(m=m,amp=amp,V=V,a=a):
-            p_above = scipy.stats.distributions.norm.cdf(m-pm.stukel_logit(threshold_val,*a), 0, np.sqrt(amp**2+V))
+            p_above = scipy.stats.distributions.norm.cdf(m-inverse_linkfn(threshold_val, a), 0, np.sqrt(amp**2+V))
             if p_above <= max_p_above:
                 return 0.
             else:
@@ -120,10 +140,9 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
     s_d = []
     data_d = []
     
-    coef_ = pm.Uninformative('coef_', np.zeros(2))
-    @pm.deterministic
-    def coef(coef_=coef_):
-        return np.hstack([1,coef_])
+    #coef = np.array([ -1.52718682e+00,   1.88227984e-01,  -2.03947095e-02,
+    #     1.94652535e-02,   7.15159752e-04])
+
     
 
     for i in xrange(len(pos)/grainsize+1):
@@ -135,9 +154,7 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
             # Tomorrow: Empirically set the link function to the MLE?
 
             # The allele frequency
-            s_d.append(pm.Lambda('s_%i'%i,lambda lt=eps_p_f_d[-1], a=a, coef=coef: 
-            pm.flib.stukel_invlogit(np.sum([c_*lt**(power+1) for (power, c_) in enumerate(coef)], axis=0), *a),
-            trace=False))
+            s_d.append(pm.Lambda('s_%i'%i,lambda lt=eps_p_f_d[-1], a=a, coef=coef:  linkfn(lt, a, coef), trace=False))
             
             # The observed allele frequencies
             data_d.append(pm.Binomial('data_%i'%i, pos[sl]+neg[sl], s_d[-1], value=pos[sl], observed=True))
