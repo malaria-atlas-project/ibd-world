@@ -38,7 +38,7 @@ __all__ = ['make_model']
 # lon = np.array([lonfun(tau)*180./np.pi for tau in t])
 
 constrained = True
-threshold_val = 0.01
+threshold_val = 0.001
 max_p_above = 0.00001
 
 def mean_fn(x,m):
