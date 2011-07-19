@@ -63,12 +63,12 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
     # The range parameters. Units are RADIANS. 
     # 1 radian = the radius of the earth, about 6378.1 km
     scale = pm.Exponential('scale', .1, value=.07)
-    # @pm.potential
-    # def scale_constraint(scale=scale):
-    #     if scale>1:
-    #         return -np.inf
-    #     else:
-    #         return 0
+    @pm.potential
+    def scale_constraint(scale=scale):
+        if scale>1:
+            return -np.inf
+        else:
+            return 0
 
     # This parameter controls the degree of differentiability of the field.
     diff_degree = pm.Uniform('diff_degree', .01, 3, value=0.5, observed=True)
@@ -107,7 +107,7 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
     a1 = pm.Normal('a1',0,.1,value=0,observed=True)
     a = pm.Lambda('a',lambda a0=a0,a1=a1: [a0,a1])
 
-    m = pm.Uninformative('m',value=-13)
+    m = pm.Uninformative('m',value=-25)
     @pm.deterministic(trace=False)
     def M(m=m):
         return pm.gp.Mean(mean_fn, m=m)
