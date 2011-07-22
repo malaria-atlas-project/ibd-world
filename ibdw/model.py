@@ -37,6 +37,10 @@ __all__ = ['make_model']
 # lat = np.array([latfun(tau)*180./np.pi for tau in t])    
 # lon = np.array([lonfun(tau)*180./np.pi for tau in t])
 
+# Tried: unconstrained scale, threshold = .001, .01
+# Scale < 2, threshold = .001
+
+
 constrained = True
 threshold_val = 0.001
 max_p_above = 0.00001
@@ -65,7 +69,7 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
     scale = pm.Exponential('scale', .1, value=.07)
     @pm.potential
     def scale_constraint(scale=scale):
-        if scale>1:
+        if scale>.5:
             return -np.inf
         else:
             return 0
