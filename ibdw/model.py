@@ -42,8 +42,8 @@ __all__ = ['make_model']
 
 
 constrained = True
-threshold_val = 0.001
-max_p_above = 0.00001
+threshold_val = 1e-6
+max_p_above = 1e-6
 
 def mean_fn(x,m):
     return pm.gp.zero_fn(x)+m
