@@ -42,11 +42,11 @@ __all__ = ['make_model']
 
 
 constrained = True
-threshold_val = 1e-6
-max_p_above = 1e-6
+# threshold_val = 1e-6
+# max_p_above = 1e-6
 
-# threshold_val = 0.001
-# max_p_above = 0.00001
+threshold_val = 0.0001
+max_p_above = 0.0001
 
 def mean_fn(x,m):
     return pm.gp.zero_fn(x)+m
@@ -72,7 +72,7 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
     scale = pm.Exponential('scale', .1, value=.07)
     @pm.potential
     def scale_constraint(scale=scale):
-        if scale>.5:
+        if scale>.25:
             return -np.inf
         else:
             return 0
