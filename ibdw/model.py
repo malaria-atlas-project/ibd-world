@@ -45,6 +45,9 @@ constrained = True
 threshold_val = 1e-6
 max_p_above = 1e-6
 
+# threshold_val = 0.001
+# max_p_above = 0.00001
+
 def mean_fn(x,m):
     return pm.gp.zero_fn(x)+m
 
@@ -146,7 +149,6 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
     
     #coef = np.array([ -1.52718682e+00,   1.88227984e-01,  -2.03947095e-02,
     #     1.94652535e-02,   7.15159752e-04])
-
     
 
     for i in xrange(len(pos)/grainsize+1):
