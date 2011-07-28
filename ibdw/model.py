@@ -72,7 +72,7 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
     scale = pm.Exponential('scale', .1, value=.07)
     @pm.potential
     def scale_constraint(scale=scale):
-        if scale>.25:
+        if scale>.5:
             return -np.inf
         else:
             return 0
