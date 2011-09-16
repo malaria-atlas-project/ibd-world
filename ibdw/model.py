@@ -91,10 +91,10 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
     #         return 0
 
     # HbS
-    coef = np.array([-1.48556762,  0.28125179,  0.02261485,  0.02125477])
+    # coef = np.array([-1.48556762,  0.28125179,  0.02261485,  0.02125477])
     
     # HbC
-    # coef = np.array([-0.072328175,  1.105591388,  0.048698858,  0.004114882])
+    coef = np.array([-0.072328175,  1.105591388,  0.048698858,  0.004114882])
 
     def poly(x,coef=coef):
         return np.sum([c_*x**(power) for (power, c_) in enumerate(coef)], axis=0)
