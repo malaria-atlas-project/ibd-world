@@ -38,7 +38,7 @@ __all__ = ['make_model']
 # lon = np.array([lonfun(tau)*180./np.pi for tau in t])
 
 constrained = True
-threshold_val = 0.01
+threshold_val = 0.0001
 max_p_above = 0.00001
 
 def mean_fn(x,m):
@@ -53,7 +53,7 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
     grainsize = 10
 
     # Unique data locations
-    data_mesh, logp_mesh, fi, ui, ti = uniquify_tol(5./6378.1, 0, lon, lat)
+    data_mesh, logp_mesh, fi, ui, ti = uniquify(lon, lat)
     
     s_hat = (pos+1.)/(pos+neg+2.)
         
@@ -63,15 +63,15 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
     # The range parameters. Units are RADIANS. 
     # 1 radian = the radius of the earth, about 6378.1 km
     scale = pm.Exponential('scale', .1, value=.07)
-    # @pm.potential
-    # def scale_constraint(scale=scale):
-    #     if scale>1:
-    #         return -np.inf
-    #     else:
-    #         return 0
+    @pm.potential
+    def scale_constraint(scale=scale):
+        if scale>.5:
+            return -np.inf
+        else:
+            return 0
 
     # This parameter controls the degree of differentiability of the field.
-    diff_degree = pm.Uniform('diff_degree', .01, 3, value=0.5)
+    diff_degree = pm.Uniform('diff_degree', .01, 3, value=0.5, observed=True)
 
     # The nugget variance.
     V = pm.Exponential('V', .1, value=1)
