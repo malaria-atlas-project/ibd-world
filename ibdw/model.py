@@ -90,10 +90,7 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
     #     else:
     #         return 0
 
-    # HbS
-    # coef = np.array([-1.48556762,  0.28125179,  0.02261485,  0.02125477])
-    
-    # HbC
+    # Coefficients for HbC
     coef = np.array([-0.072328175,  1.105591388,  0.048698858,  0.004114882])
 
     def poly(x,coef=coef):
