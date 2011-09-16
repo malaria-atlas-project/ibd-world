@@ -136,6 +136,6 @@ def mcmc_init(M):
     
     
                     
-metadata_keys = ['fi','ti','ui','coef']
+metadata_keys = ['fi','ti','ui','coef','max_p_above','sca']
 
 from model import *
