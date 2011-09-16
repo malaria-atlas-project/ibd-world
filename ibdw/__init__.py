@@ -26,8 +26,8 @@ def check_data(input):
     if np.any(input.pos<0) or np.any(input.neg<0):
         raise ValueError, 'Some negative values in pos and neg'
 
-def constraint(max_p_value):
-    constraint = max_p_value
+def constraint(max_p_above):
+    constraint = max_p_above
     return constraint
 
 def allele(sp_sub, a, coef):
