@@ -26,9 +26,9 @@ def check_data(input):
     if np.any(input.pos<0) or np.any(input.neg<0):
         raise ValueError, 'Some negative values in pos and neg'
 
-def constraint(max_p_above):
-    constraint = max_p_above
-    return constraint
+#def constraint(max_p_above):
+#    constraint = max_p_above
+#    return constraint
 
 def allele(sp_sub, a, coef):
     allele = sp_sub*0
@@ -140,6 +140,6 @@ def mcmc_init(M):
     
     
                     
-metadata_keys = ['fi','ti','ui','coef','constraint','sca']
+metadata_keys = ['fi','ti','ui','coef','sca']
 
 from model import *
