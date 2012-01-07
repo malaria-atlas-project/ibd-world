@@ -116,69 +116,75 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
             scale_short_in_km = scale_short*6378.1
             scale_long_in_km = scale_long*6378.1
 
-    # This parameter controls the degree of differentiability of the field.
-    diff_degree = pm.Uniform('diff_degree', .01, 3, value=0.5, observed=True)
+            # This parameter controls the degree of differentiability of the field.
+            diff_degree = pm.Uniform('diff_degree', .01, 3, value=0.5, observed=True)
 
-    # The nugget variance.
-    V = pm.Exponential('V', .1, value=1)
-    # @pm.potential
-    # def V_constraint(V=V):
-    #     if V<.1:
-    #         return -np.inf
-    #     else:
-    #         return 0
+            # The nugget variance.
+            V = pm.Exponential('V', .1, value=1)
+            # @pm.potential
+            # def V_constraint(V=V):
+            #     if V<.1:
+            #         return -np.inf
+            #     else:
+            #         return 0
+        
+            # Coefficients for HbC
+            coef = np.array([-0.072328175,  1.105591388,  0.048698858,  0.004114882])
 
-    # Coefficients for HbC
-    coef = np.array([-0.072328175,  1.105591388,  0.048698858,  0.004114882])
+            def poly(x,coef=coef):
+                return np.sum([c_*x**(power) for (power, c_) in enumerate(coef)], axis=0)
 
-    def poly(x,coef=coef):
-        return np.sum([c_*x**(power) for (power, c_) in enumerate(coef)], axis=0)
+            def linkfn(x, a=[0,0], coef=coef):
+                return pm.flib.stukel_invlogit(poly(x,coef), *a)
 
-    def linkfn(x, a=[0,0], coef=coef):
-        return pm.flib.stukel_invlogit(poly(x,coef), *a)
+            def inverse_poly(y, coef=coef):
+                poly = coef[::-1] + np.array([0,0,0,-y])
+                roots = filter(lambda x: not x.imag, np.roots(poly))
+                return np.array(roots).real
 
-    def inverse_poly(y, coef=coef):
-        poly = coef[::-1] + np.array([0,0,0,-y])
-        roots = filter(lambda x: not x.imag, np.roots(poly))
-        return np.array(roots).real
+            def inverse_linkfn(y, a=[0,0], coef=coef, range=range):
+                all_sol = inverse_poly(pm.flib.stukel_logit(y, *a), coef)
+                # return all_sol[np.argmin(np.abs(all_sol))]
+                if len(all_sol)>1:
+                    raise RuntimeError
+                return all_sol[0]
 
-    def inverse_linkfn(y, a=[0,0], coef=coef, range=range):
-        all_sol = inverse_poly(pm.flib.stukel_logit(y, *a), coef)
-        # return all_sol[np.argmin(np.abs(all_sol))]
-        if len(all_sol)>1:
-            raise RuntimeError
-        return all_sol[0]
+            a0 = pm.Normal('a0',0,.1,value=0,observed=True)
+            # a1 limits mixing.
+            a1 = pm.Normal('a1',0,.1,value=0,observed=True)
+            a = pm.Lambda('a',lambda a0=a0,a1=a1: [a0,a1])
 
-    a0 = pm.Normal('a0',0,.1,value=0,observed=True)
-    # a1 limits mixing.
-    a1 = pm.Normal('a1',0,.1,value=0,observed=True)
-    a = pm.Lambda('a',lambda a0=a0,a1=a1: [a0,a1])
-
-    m = pm.Uninformative('m',value=-25)
-    @pm.deterministic(trace=False)
-    def M(m=m):
-        return pm.gp.Mean(mean_fn, m=m)
+            m = pm.Uninformative('m',value=-25)
+            @pm.deterministic(trace=False)
+            def M(m=m):
+                return pm.gp.Mean(mean_fn, m=m)
     
-    if constrained:
-        @pm.potential
-        def pripred_check(m=m,amp=amp,V=V,a=a):
-            p_above = scipy.stats.distributions.norm.cdf(m-inverse_linkfn(threshold_val, a), 0, np.sqrt(amp**2+V))
-            if p_above <= max_p_above:
-                return 0.
-            else:
-                return -np.inf
+            if constrained:
+                @pm.potential
+                def pripred_check(m=m,amp=amp,V=V,a=a):
+                    p_above = scipy.stats.distributions.norm.cdf(m-inverse_linkfn(threshold_val, a), 0, np.sqrt(amp**2+V))
+                    if p_above <= max_p_above:
+                        return 0.
+                    else:
+                        return -np.inf
 
-    # Create the covariance & its evaluation at the data locations.
-    facdict = dict([(k,1.e6) for k in covariate_keys])
-    facdict['m'] = 0
-    @pm.deterministic(trace=False)
-    def C(amp=amp, amp_short_frac=amp_short_frac, scale_short=scale_short, scale_long=scale_long, diff_degree=diff_degree, ck=covariate_keys, id=input_data, ui=ui, facdict=facdict):
-        """A covariance function created from the current parameter values."""
-        eval_fn = CovarianceWithCovariates(nested_covariance_fn, id, ck, ui, fac=facdict)
-        return pm.gp.FullRankCovariance(eval_fn, amp=amp, amp_short_frac=amp_short_frac, scale_short=scale_short,
-                            scale_long=scale_long, diff_degree=diff_degree)
+            # Create the covariance & its evaluation at the data locations.
+            facdict = dict([(k,1.e6) for k in covariate_keys])
+            facdict['m'] = 0
+            @pm.deterministic(trace=False)
+            def C(amp=amp, amp_short_frac=amp_short_frac, scale_short=scale_short, scale_long=scale_long, diff_degree=diff_degree, ck=covariate_keys, id=input_data, ui=ui, facdict=facdict):
+                """A covariance function created from the current parameter values."""
+                eval_fn = CovarianceWithCovariates(nested_covariance_fn, id, ck, ui, fac=facdict)
+                return pm.gp.FullRankCovariance(eval_fn, amp=amp, amp_short_frac=amp_short_frac, scale_short=scale_short,
+                                    scale_long=scale_long, diff_degree=diff_degree)
 
-    sp_sub = pm.gp.GPSubmodel('sp_sub', M, C, logp_mesh, tally_f=False)
+            sp_sub = pm.gp.GPSubmodel('sp_sub', M, C, logp_mesh, tally_f=False)
+            
+            init_OK = True
+        except pm.ZeroProbability:
+            init_OK = False
+            cls,inst,tb = sys.exc_info()
+            print 'Restarting, message %s\n'%inst.message
             
     # Make f start somewhere a bit sane
     sp_sub.f_eval.value = sp_sub.f_eval.value - np.mean(sp_sub.f_eval.value)
