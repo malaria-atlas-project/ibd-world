@@ -41,7 +41,7 @@ __all__ = ['make_model','nested_covariance_fn']
 # Scale < 2, threshold = .001
 
 
-constrained = True
+constrained = False
 # threshold_val = 1e-6
 # max_p_above = 1e-6
 
