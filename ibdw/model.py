@@ -129,25 +129,25 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
             #         return 0
         
             # Coefficients for HbC
-            coef = np.array([-0.072328175,  1.105591388,  0.048698858,  0.004114882])
+            #coef = np.array([-0.072328175,  1.105591388,  0.048698858,  0.004114882])
 
-            def poly(x,coef=coef):
-                return np.sum([c_*x**(power) for (power, c_) in enumerate(coef)], axis=0)
+            #def poly(x,coef=coef):
+            #    return np.sum([c_*x**(power) for (power, c_) in enumerate(coef)], axis=0)
 
-            def linkfn(x, a=[0,0], coef=coef):
-                return pm.flib.stukel_invlogit(poly(x,coef), *a)
+            #def linkfn(x, a=[0,0], coef=coef):
+            #    return pm.flib.stukel_invlogit(poly(x,coef), *a)
 
-            def inverse_poly(y, coef=coef):
-                poly = coef[::-1] + np.array([0,0,0,-y])
-                roots = filter(lambda x: not x.imag, np.roots(poly))
-                return np.array(roots).real
+            #def inverse_poly(y, coef=coef):
+            #    poly = coef[::-1] + np.array([0,0,0,-y])
+            #    roots = filter(lambda x: not x.imag, np.roots(poly))
+            #    return np.array(roots).real
 
-            def inverse_linkfn(y, a=[0,0], coef=coef, range=range):
-                all_sol = inverse_poly(pm.flib.stukel_logit(y, *a), coef)
-                # return all_sol[np.argmin(np.abs(all_sol))]
-                if len(all_sol)>1:
-                    raise RuntimeError
-                return all_sol[0]
+            #def inverse_linkfn(y, a=[0,0], coef=coef, range=range):
+            #    all_sol = inverse_poly(pm.flib.stukel_logit(y, *a), coef)
+            #    # return all_sol[np.argmin(np.abs(all_sol))]
+            #    if len(all_sol)>1:
+            #        raise RuntimeError
+            #    return all_sol[0]
 
             a0 = pm.Normal('a0',0,.1,value=0,observed=True)
             # a1 limits mixing.
@@ -194,10 +194,6 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
     s_d = []
     data_d = []
     
-    #coef = np.array([ -1.52718682e+00,   1.88227984e-01,  -2.03947095e-02,
-    #     1.94652535e-02,   7.15159752e-04])
-    
-
     for i in xrange(len(pos)/grainsize+1):
         sl = slice(i*grainsize,(i+1)*grainsize,None)        
         if len(pos[sl])>0:
@@ -207,7 +203,7 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
             # Tomorrow: Empirically set the link function to the MLE?
 
             # The allele frequency
-            s_d.append(pm.Lambda('s_%i'%i,lambda lt=eps_p_f_d[-1], a=a, coef=coef:  linkfn(lt, a, coef), trace=False))
+            s_d.append(pm.Lambda('s_%i'%i,lambda lt=eps_p_f_d[-1], a=a, trace=False))
             
             # The observed allele frequencies
             data_d.append(pm.Binomial('data_%i'%i, pos[sl]+neg[sl], s_d[-1], value=pos[sl], observed=True))
