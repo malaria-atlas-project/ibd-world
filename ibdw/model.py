@@ -203,7 +203,7 @@ def make_model(lon,lat,input_data,covariate_keys,pos,neg):
             # Tomorrow: Empirically set the link function to the MLE?
 
             # The allele frequency
-            s_d.append(pm.Lambda('s_%i'%i,lambda lt=eps_p_f_d[-1], a=a, trace=False))
+            s_d.append(pm.Lambda('s_%i'%i,lambda lt=eps_p_f_d[-1], a=a: pm.flib.stukel_invlogit(lt, *a),trace=False))
             
             # The observed allele frequencies
             data_d.append(pm.Binomial('data_%i'%i, pos[sl]+neg[sl], s_d[-1], value=pos[sl], observed=True))
